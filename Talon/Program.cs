@@ -19,7 +19,7 @@ namespace Talon
         private static Spell Q, W, E, R;
         private static SpellSlot Ignite;
         private static Items.Item GB, TMT, HYD;
-        
+
         private static Obj_AI_Hero LockedTarget;
 
         private static void Main(string[] args)
@@ -52,6 +52,7 @@ namespace Talon
             Menu_Combo.AddItem(new MenuItem("combo_ITM", "Items").SetValue(true));
             Menu_Combo.AddItem(new MenuItem("combo_IGN", "Ignite").SetValue(true));
             Menu_Combo.AddItem(new MenuItem("combo_RUSH", "Ultimate Rush").SetValue(true));
+            Menu_Combo.AddItem(new MenuItem("combo_WE", "W before E").SetValue(false));
 
             var Menu_Harass = new Menu("Harass", "harass");
             Menu_Harass.AddItem(new MenuItem("harass_W", "W").SetValue(true));
@@ -164,6 +165,7 @@ namespace Talon
             var useHYD = Config.Item("item_HYD").GetValue<bool>();
 
             var useRush = Config.Item("combo_RUSH").GetValue<bool>();
+            var useWE = Config.Item("combo_WE").GetValue<bool>();
 
             var Target = LockedTarget ?? TargetSelector.GetTarget(1500f, TargetSelector.DamageType.Physical);
 
@@ -186,7 +188,9 @@ namespace Talon
                 GB.Cast();
 
             // Spells
-            if (E.IsReady() && Target.IsValidTarget(E.Range) && useE)
+            if (W.IsReady() && useWE && useW && Target.IsValidTarget(W.Range) && !Player.HasBuff("TalonDisappear"))
+                W.Cast(Target);
+            else if (E.IsReady() && Target.IsValidTarget(E.Range) && useE)
                 E.CastOnUnit(Target);
             else if (W.IsReady() && Target.IsValidTarget(W.Range) && useW)
                 W.Cast(Target.Position);
