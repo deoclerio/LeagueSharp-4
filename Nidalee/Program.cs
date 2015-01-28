@@ -5,7 +5,6 @@ using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LX_Orbwalker;
-using SharpDX;
 using Color = System.Drawing.Color;
 
 #endregion
@@ -14,23 +13,67 @@ namespace Nidalee
 {
     internal class Program
     {
-        private static Spell Q1, Q2, W1, W2, E1, E2, R;
-        private static Items.Item Bork, Cutlass, DFG;
-        private static SpellSlot Ignite;
-        private static Menu Config;
-        private static Obj_AI_Hero Player;
+        
+        private static Items.Item _bork, _cutlass;
+        private static SpellSlot _igniteSlot;
+        private static Menu _config;
+        private static Obj_AI_Hero _player;
+
+        #region Spells
+        private static Spell Q
+        {
+            get
+            {
+                if (IsCougar)
+                    return new Spell(SpellSlot.Q, 125f + 50f);
+
+                var spell = new Spell(SpellSlot.Q, 1500f);
+                spell.SetSkillshot(0.125f, 70f, 1300, true, SkillshotType.SkillshotLine);
+                return spell;
+            }
+        }
+
+        private static Spell W
+        {
+            get
+            {
+                if (IsCougar)
+                    return new Spell(SpellSlot.W, 750f);
+
+                var spell = new Spell(SpellSlot.W, 900f);
+                spell.SetSkillshot(1.5f, 80f, float.MaxValue, false, SkillshotType.SkillshotCircle);
+                return spell;
+            }
+        }
+
+        private static Spell E
+        {
+            get
+            {
+                return IsCougar ? new Spell(SpellSlot.E, 300f) : new Spell(SpellSlot.E, 600f);
+            }
+        }
+
+        private static Spell R
+        {
+            get
+            {
+                return new Spell(SpellSlot.R);
+            }
+        }
+        #endregion
 
         private static Orbwalking.OrbwalkingMode ActiveMode
         {
             get
             {
-                if (Config.Item("KeysCombo").GetValue<KeyBind>().Active)
+                if (_config.Item("KeysCombo").GetValue<KeyBind>().Active)
                     return Orbwalking.OrbwalkingMode.Combo;
 
-                if (Config.Item("KeysLaneClear").GetValue<KeyBind>().Active)
+                if (_config.Item("KeysLaneClear").GetValue<KeyBind>().Active)
                     return Orbwalking.OrbwalkingMode.LaneClear;
 
-                if (Config.Item("KeysMixed").GetValue<KeyBind>().Active)
+                if (_config.Item("KeysMixed").GetValue<KeyBind>().Active)
                     return Orbwalking.OrbwalkingMode.Mixed;
 
                 return Orbwalking.OrbwalkingMode.None;
@@ -39,12 +82,12 @@ namespace Nidalee
 
         private static bool PacketCasting
         {
-            get { return Config.Item("packetCasting").GetValue<bool>(); }
+            get { return _config.Item("packetCasting").GetValue<bool>(); }
         }
 
         private static bool IsCougar
         {
-            get { return Player.BaseSkinName != "Nidalee"; }
+            get { return _player.BaseSkinName != "Nidalee"; }
         }
 
         private static void Main(string[] args)
@@ -54,355 +97,399 @@ namespace Nidalee
 
         private static void Game_OnGameLoad(EventArgs args)
         {
-            Player = ObjectManager.Player;
-            if (Player.ChampionName != "Nidalee") return;
+            _player = ObjectManager.Player;
+            if (_player.ChampionName != "Nidalee") return;
 
             Game.PrintChat(
-                "<font color=\"#0066FF\">[<font color=\"#FFFFFF\">madk</font>]</font><font color=\"#FFFFFF\"> Nidalee assembly loaded! :^)</font>");
-
-            #region Spells
-
-            /* Human Spells */
-            Q1 = new Spell(SpellSlot.Q, 1500f);
-            W1 = new Spell(SpellSlot.W, 900f);
-            E1 = new Spell(SpellSlot.E, 600f);
-            /* Cougar Spells */
-            Q2 = new Spell(SpellSlot.Q, 125f + 50f);
-            W2 = new Spell(SpellSlot.W, 750f);
-            E2 = new Spell(SpellSlot.E, 300f);
-            /* Form Switcher */
-            R = new Spell(SpellSlot.R);
-
-            Q1.SetSkillshot(0.125f, 70f, 1300, true, SkillshotType.SkillshotLine);
-            W1.SetSkillshot(1.5f, 80f, float.MaxValue, false, SkillshotType.SkillshotCircle);
-
-            #endregion
+                "<font color=\"#0066FF\">[<font color=\"#FFFFFF\">madk</font>]</font><font color=\"#FFFFFF\"> Nidalee assembly loaded!</font>");
 
             #region Items
 
-            Utility.Map.MapType map = Utility.Map.GetMap().Type;
-            int DFGId = (map == Utility.Map.MapType.TwistedTreeline || map == Utility.Map.MapType.CrystalScar)
-                ? 3128
-                : 3188;
-
-            Bork = new Items.Item(3153, 450f);
-            Cutlass = new Items.Item(3144, 450f);
-            DFG = new Items.Item(DFGId, 750f);
-
+            _bork = new Items.Item(3153, 450f);
+            _cutlass = new Items.Item(3144, 450f);
+            
             #endregion
 
             /* Summoner Spells */
-            Ignite = Player.GetSpellSlot("SummonerDot");
+            _igniteSlot = _player.GetSpellSlot("SummonerDot");
 
             #region Create Menu
 
-            Config = new Menu("Nidaleek", "Nidaleek", true);
+            _config = new Menu("Nidaleek", "Nidaleek", true);
 
-            // Simple Target Selector
-            var Menu_TargetSelector = new Menu("Target Selector", "Target Selector");
-            TargetSelector.AddToMenu(Menu_TargetSelector);
+            var menuTargetSelector = new Menu("Target Selector", "Target Selector");
+            TargetSelector.AddToMenu(menuTargetSelector);
 
-            // Orbwalker
-            var Menu_Orbwalker = new Menu("Orbwalker", "Orbwalker");
-            LXOrbwalker.AddToMenu(Menu_Orbwalker);
+            var menuOrbwalker = new Menu("Orbwalker", "Orbwalker");
+            LXOrbwalker.AddToMenu(menuOrbwalker);
 
-            // Key Bindings
-            var Menu_KeyBindings = new Menu("Key Bindings", "KB");
-            Menu_KeyBindings.AddItem(
+            var menuKeyBindings = new Menu("Key Bindings", "KB");
+            menuKeyBindings.AddItem(
                 new MenuItem("KeysCombo", "Combo").SetValue(
-                    new KeyBind(Menu_Orbwalker.Item("Combo_Key").GetValue<KeyBind>().Key, KeyBindType.Press, false)));
-            Menu_KeyBindings.AddItem(
+                    new KeyBind(menuOrbwalker.Item("Combo_Key").GetValue<KeyBind>().Key, KeyBindType.Press)));
+            menuKeyBindings.AddItem(
                 new MenuItem("KeysMixed", "Harass").SetValue(
-                    new KeyBind(Menu_Orbwalker.Item("Harass_Key").GetValue<KeyBind>().Key, KeyBindType.Press, false)));
-            Menu_KeyBindings.AddItem(
+                    new KeyBind(menuOrbwalker.Item("Harass_Key").GetValue<KeyBind>().Key, KeyBindType.Press)));
+            menuKeyBindings.AddItem(
                 new MenuItem("KeysLaneClear", "Lane/Jungle Clear").SetValue(
-                    new KeyBind(Menu_Orbwalker.Item("LaneClear_Key").GetValue<KeyBind>().Key, KeyBindType.Press,
-                        false)));
+                    new KeyBind(menuOrbwalker.Item("LaneClear_Key").GetValue<KeyBind>().Key, KeyBindType.Press)));
 
-            // Combo
-            var Menu_Combo = new Menu("Combo", "combo");
-            Menu_Combo.AddItem(new MenuItem("combo_info1", "Human Form:"));
-            Menu_Combo.AddItem(new MenuItem("combo_Q1", "Javelin Toss").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_W1", "Bushwhack").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_E1", "Primal Surge").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_info2", "Cougar Form:"));
-            Menu_Combo.AddItem(new MenuItem("combo_Q2", "Takedown").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_W2", "Pounce").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_E2", "Swipe").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_info3", "Extra Functions:"));
-            Menu_Combo.AddItem(new MenuItem("combo_R", "Auto Switch Forms").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_Items", "Use Items").SetValue(true));
-            Menu_Combo.AddItem(new MenuItem("combo_UT", "Jump to turret range").SetValue(true));
+            var menuCombo = new Menu("Combo", "combo");
+            menuCombo.AddItem(new MenuItem("combo_info1", "Human Form:"));
+            menuCombo.AddItem(new MenuItem("combo_Q1", "Javelin Toss").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_W1", "Bushwhack").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_E1", "Primal Surge").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_blank1", ""));
+            menuCombo.AddItem(new MenuItem("combo_info2", "Cougar Form:"));
+            menuCombo.AddItem(new MenuItem("combo_Q2", "Takedown").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_W2", "Pounce").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_E2", "Swipe").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_blank2", ""));
+            menuCombo.AddItem(new MenuItem("combo_info3", "Extra Functions:"));
+            menuCombo.AddItem(new MenuItem("combo_R", "Auto Switch Forms").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_Items", "Use Items").SetValue(true));
+            menuCombo.AddItem(new MenuItem("combo_UT", "Jump to turret range").SetValue(true));
 
-            // Harass
-            var Menu_Harass = new Menu("Harass", "harass");
-            Menu_Harass.AddItem(new MenuItem("harass_Q1", "Javelin Toss").SetValue(true));
-            Menu_Harass.AddItem(new MenuItem("harass_W1", "Bushwhack").SetValue(true));
+            var menuHarass = new Menu("Harass", "harass");
+            menuHarass.AddItem(new MenuItem("harass_info1", "Human Form:"));
+            menuHarass.AddItem(new MenuItem("harass_Q1", "Javelin Toss").SetValue(true));
+            menuHarass.AddItem(new MenuItem("harass_W1", "Bushwhack").SetValue(true));
+            menuHarass.AddItem(new MenuItem("harass_blank1", ""));
+            menuHarass.AddItem(new MenuItem("harass_info2:", "Cougar Form:"));
+            menuHarass.AddItem(new MenuItem("harass_E2", "Swipe").SetValue(true));
+            menuHarass.AddItem(new MenuItem("harass_blank2", ""));
+            menuHarass.AddItem(new MenuItem("harass_mn", "Required Mana").SetValue(new Slider(40)));
 
-            // Lane Clear
-            var Menu_Farm = new Menu("Lane Clear", "farm");
-            Menu_Farm.AddItem(new MenuItem("farm_info1", "Human Form:"));
-            Menu_Farm.AddItem(new MenuItem("farm_E1", "Primal Surge").SetValue(true));
-            Menu_Farm.AddItem(new MenuItem("farm_info2", "Cougar Form:"));
-            Menu_Farm.AddItem(new MenuItem("farm_Q2", "Takedown").SetValue(true));
-            Menu_Farm.AddItem(new MenuItem("farm_W2", "Pounce").SetValue(true));
-            Menu_Farm.AddItem(new MenuItem("farm_E2", "Swipe").SetValue(true));
-            Menu_Farm.AddItem(new MenuItem("farm_R", "Auto Swtich Forms").SetValue(false));
+            var menuFarm = new Menu("Lane Clear", "farm");
+            menuFarm.AddItem(new MenuItem("farm_info1", "Human Form:"));
+            menuFarm.AddItem(new MenuItem("farm_Q1", "Javelin Toss").SetValue(true));
+            menuFarm.AddItem(new MenuItem("farm_E1", "Primal Surge").SetValue(true));
+            menuFarm.AddItem(new MenuItem("farm_blank1", ""));
+            menuFarm.AddItem(new MenuItem("farm_info2", "Cougar Form:"));
+            menuFarm.AddItem(new MenuItem("farm_Q2", "Takedown").SetValue(true));
+            menuFarm.AddItem(new MenuItem("farm_W2", "Pounce").SetValue(true));
+            menuFarm.AddItem(new MenuItem("farm_E2", "Swipe").SetValue(true));
+            menuFarm.AddItem(new MenuItem("farm_blank2", ""));
+            menuFarm.AddItem(new MenuItem("farm_R", "Auto Swtich Forms").SetValue(false));
 
-            // Kill Steal
-            var Menu_KillSteal = new Menu("Kill Steal", "killsteal");
-            Menu_KillSteal.AddItem(new MenuItem("ks_enabled", "State").SetValue(true));
-            Menu_KillSteal.AddItem(new MenuItem("ks_Q1", "Javelin Toss").SetValue(true));
-            Menu_KillSteal.AddItem(new MenuItem("ks_dot", "Ignite").SetValue(true));
+            var menuKillSteal = new Menu("Kill Steal", "killsteal");
+            menuKillSteal.AddItem(new MenuItem("ks_enabled", "State").SetValue(true));
+            menuKillSteal.AddItem(new MenuItem("ks_Q1", "Javelin Toss").SetValue(true));
+            menuKillSteal.AddItem(new MenuItem("ks_dot", "Ignite").SetValue(true));
 
-            // Misc
-            var Menu_Misc = new Menu("Misc", "Misc");
-            Menu_Misc.AddItem(
+            var menuMisc = new Menu("Misc", "Misc");
+            menuMisc.AddItem(
                 new MenuItem("autoHealMode", "Auto Heal Mode").SetValue(new StringList(new[] {"OFF", "Self", "Allies"},
                     1)));
-            Menu_Misc.AddItem(new MenuItem("autoHealPct", "Auto Heal %").SetValue(new Slider(50)));
-            Menu_Misc.AddItem(new MenuItem("packetCasting", "Packet Casting").SetValue(true));
+            menuMisc.AddItem(new MenuItem("autoHealPct", "Auto Heal %").SetValue(new Slider(50)));
+            menuMisc.AddItem(new MenuItem("packetCasting", "Packet Casting").SetValue(true));
 
-            // Drawings
-            var Menu_Drawings = new Menu("Drawings", "drawings");
-            Menu_Drawings.AddItem(new MenuItem("draw_info1", "Human Form:"));
-            Menu_Drawings.AddItem(new MenuItem("draw_Q1", "Javelin Toss").SetValue(new Circle(true, Color.White)));
-            Menu_Drawings.AddItem(
-                new MenuItem("draw_Q1MaxDmg", "Javelin Toss: Max DMG").SetValue(new Circle(true, Color.White)));
-            Menu_Drawings.AddItem(new MenuItem("draw_W1", "Bushwhack").SetValue(new Circle(true, Color.White)));
-            Menu_Drawings.AddItem(new MenuItem("draw_E1", "Primal Surge").SetValue(new Circle(true, Color.White)));
-            Menu_Drawings.AddItem(new MenuItem("draw_info2", "Cougar Form:"));
-            Menu_Drawings.AddItem(new MenuItem("draw_W2", "Pounce").SetValue(new Circle(true, Color.White)));
-            Menu_Drawings.AddItem(new MenuItem("draw_E2", "Swipe").SetValue(new Circle(true, Color.White)));
-            Menu_Drawings.AddItem(new MenuItem("draw_CF", "Current Form Only").SetValue(false));
+            var menuDrawings = new Menu("Drawings", "drawings");
+            menuDrawings.AddItem(new MenuItem("draw_info1", "Human Form:"));
+            menuDrawings.AddItem(new MenuItem("draw_Q1", "Javelin Toss").SetValue(new Circle(true, Color.White)));
+            menuDrawings.AddItem(new MenuItem("draw_W1", "Bushwhack").SetValue(new Circle(true, Color.White)));
+            menuDrawings.AddItem(new MenuItem("draw_E1", "Primal Surge").SetValue(new Circle(true, Color.White)));
+            menuDrawings.AddItem(new MenuItem("draw_blank", ""));
+            menuDrawings.AddItem(new MenuItem("draw_info2", "Cougar Form:"));
+            menuDrawings.AddItem(new MenuItem("draw_W2", "Pounce").SetValue(new Circle(true, Color.White)));
+            menuDrawings.AddItem(new MenuItem("draw_E2", "Swipe").SetValue(new Circle(true, Color.White)));
+            menuDrawings.AddItem(new MenuItem("draw_blank2", ""));
+            menuDrawings.AddItem(new MenuItem("draw_CF", "Current Form Only").SetValue(false));
 
-            Config.AddSubMenu(Menu_TargetSelector);
-            Config.AddSubMenu(Menu_Orbwalker);
-            Config.AddSubMenu(Menu_KeyBindings);
-            Config.AddSubMenu(Menu_Combo);
-            Config.AddSubMenu(Menu_Harass);
-            Config.AddSubMenu(Menu_KillSteal);
-            Config.AddSubMenu(Menu_Farm);
-            Config.AddSubMenu(Menu_Misc);
-            Config.AddSubMenu(Menu_Drawings);
+            _config.AddSubMenu(menuTargetSelector);
+            _config.AddSubMenu(menuOrbwalker);
+            _config.AddSubMenu(menuKeyBindings);
+            _config.AddSubMenu(menuCombo);
+            _config.AddSubMenu(menuHarass);
+            _config.AddSubMenu(menuKillSteal);
+            _config.AddSubMenu(menuFarm);
+            _config.AddSubMenu(menuMisc);
+            _config.AddSubMenu(menuDrawings);
 
-            Config.AddToMainMenu();
+            _config.AddToMainMenu();
 
             #endregion
 
             Game.OnGameUpdate += Game_OnGameUpdate;
             Drawing.OnDraw += Drawing_OnDraw;
-            LXOrbwalker.AfterAttack += AfterAttack;
         }
 
         private static void Game_OnGameUpdate(EventArgs args)
         {
-            if (Config.Item("ks_enabled").GetValue<bool>())
+            if (_config.Item("ks_enabled").GetValue<bool>())
                 KillSteal();
 
-            if (Config.Item("autoHealMode").GetValue<StringList>().SelectedIndex > 0)
-                AutoHeal(Config.Item("autoHealMode").GetValue<StringList>().SelectedIndex == 2);
+            if (_config.Item("autoHealMode").GetValue<StringList>().SelectedIndex > 0)
+                AutoHeal(_config.Item("autoHealMode").GetValue<StringList>().SelectedIndex == 2);
 
             switch (ActiveMode)
             {
                 case Orbwalking.OrbwalkingMode.Combo:
-                    doCombo();
+                    Combo();
                     break;
                 case Orbwalking.OrbwalkingMode.Mixed:
-                    doHarass();
+                    Harass();
                     break;
                 case Orbwalking.OrbwalkingMode.LaneClear:
-                    doFarm();
+                    Farm();
                     break;
             }
-        }
-
-        private static void AfterAttack(Obj_AI_Base unit, Obj_AI_Base target)
-        {
-            if (unit.IsMe && ActiveMode == Orbwalking.OrbwalkingMode.Combo && Q2.IsReady() && IsCougar &&
-                Config.Item("combo_Q2").GetValue<bool>())
-                Q2.CastOnUnit(Player, PacketCasting);
         }
 
         private static void Drawing_OnDraw(EventArgs args)
         {
-            var drawQ1MD = Config.Item("draw_Q1MaxDmg").GetValue<Circle>();
-            var drawQ1 = Config.Item("draw_Q1").GetValue<Circle>();
-            var drawW1 = Config.Item("draw_W1").GetValue<Circle>();
-            var drawE1 = Config.Item("draw_E1").GetValue<Circle>();
-            var drawW2 = Config.Item("draw_W2").GetValue<Circle>();
-            var drawE2 = Config.Item("draw_E2").GetValue<Circle>();
-            var drawCF = Config.Item("draw_CF").GetValue<bool>();
+            var drawQ1 = _config.Item("draw_Q1").GetValue<Circle>();
+            var drawW1 = _config.Item("draw_W1").GetValue<Circle>();
+            var drawE1 = _config.Item("draw_E1").GetValue<Circle>();
+            var drawW2 = _config.Item("draw_W2").GetValue<Circle>();
+            var drawE2 = _config.Item("draw_E2").GetValue<Circle>();
+            var drawCf = _config.Item("draw_CF").GetValue<bool>();
 
-            if (drawQ1.Active && (drawCF && !IsCougar || !drawCF))
-                Render.Circle.DrawCircle(Player.Position, Q1.Range, drawQ1.Color);
+            if (IsCougar || !drawCf)
+            {
+                if (drawW2.Active)
+                    Render.Circle.DrawCircle(_player.Position, 750f, drawW2.Color);
 
-            if (drawQ1MD.Active && (drawCF && !IsCougar || !drawCF))
-                Render.Circle.DrawCircle(Player.Position, 1300f, drawQ1MD.Color);
+                if (drawE2.Active)
+                    Render.Circle.DrawCircle(_player.Position, 300f, drawE2.Color);
+            }
 
-            if (drawW1.Active && (drawCF && !IsCougar || !drawCF))
-                Render.Circle.DrawCircle(Player.Position, W1.Range, drawW1.Color);
+            if (!IsCougar || !drawCf)
+            {
+                if (drawQ1.Active)
+                    Render.Circle.DrawCircle(_player.Position, 1500f, drawQ1.Color);
 
-            if (drawE1.Active && (drawCF && !IsCougar || !drawCF))
-                Render.Circle.DrawCircle(Player.Position, E1.Range, drawE1.Color);
+                if (drawW1.Active)
+                    Render.Circle.DrawCircle(_player.Position, 900f, drawW1.Color);
 
-            if (drawW2.Active && (drawCF && IsCougar || !drawCF))
-                Render.Circle.DrawCircle(Player.Position, W2.Range, drawW2.Color);
-
-            if (drawE2.Active && (drawCF && IsCougar || !drawCF))
-                Render.Circle.DrawCircle(Player.Position, E2.Range, drawE2.Color);
+                if (drawE1.Active)
+                    Render.Circle.DrawCircle(_player.Position, 600f, drawE1.Color);
+            }
         }
 
-        private static void doCombo()
+        private static void Combo()
         {
-            Obj_AI_Hero Target = TargetSelector.GetTarget(Q1.Range, TargetSelector.DamageType.Magical);
-            bool Marked = Target.HasBuff("nidaleepassivehunted", true);
-            bool Hunting = Player.HasBuff("nidaleepassivehunting", true);
-            float Distance = Player.Distance(Target);
-            var useItems = Config.Item("combo_Items").GetValue<bool>();
+            var target = TargetSelector.GetTarget(1600f, TargetSelector.DamageType.Magical);
+            if (target == null)
+                return;
+
+            var marked = target.HasBuff("nidaleepassivehunted", true);
+            var hunting = _player.HasBuff("nidaleepassivehunting", true);
+            var distance = _player.Distance(target);
+            var useItems = _config.Item("combo_Items").GetValue<bool>();
+
+            var useQ = _config.Item("combo_Q" + (IsCougar ? "2" : "1")).GetValue<bool>();
+            var useW = _config.Item("combo_W" + (IsCougar ? "2" : "1")).GetValue<bool>();
+            var useE = _config.Item("combo_E" + (IsCougar ? "2" : "1")).GetValue<bool>();
+            var useR = _config.Item("combo_R").GetValue<bool>();
+            var underT = _config.Item("combo_UT").GetValue<bool>();
 
             if (useItems)
             {
-                if (Items.CanUseItem(Bork.Id)) Bork.Cast(Target);
-                if (Items.CanUseItem(Cutlass.Id)) Cutlass.Cast(Target);
+                if (Items.CanUseItem(_bork.Id)) 
+                    _bork.Cast(target);
+
+                if (Items.CanUseItem(_cutlass.Id)) 
+                    _cutlass.Cast(target);
             }
 
-            var comboUT = Config.Item("combo_UT").GetValue<bool>();
-
-            /* Human Form */
-            if (!IsCougar)
+            if (!IsCougar) /* Human Form */
             {
-                if (Marked && R.IsReady() && Config.Item("combo_R").GetValue<bool>() && Distance < 750f ||
-                    (!Q1.IsReady() && !Q1.IsReady(2500) && Target.Distance(Player) < 300f) &&
-                    (!Target.UnderTurret(true) || comboUT))
-                    R.CastOnUnit(Player, PacketCasting);
-
-                else if (Q1.IsReady() && Config.Item("combo_Q1").GetValue<bool>())
-                    Q1.Cast(Target, PacketCasting);
-
-                else if (W1.IsReady() && Config.Item("combo_W1").GetValue<bool>())
-                    W1.Cast(Target, PacketCasting);
-
-                else if (E1.IsReady() && Config.Item("combo_E1").GetValue<bool>() &&
-                         (!R.IsReady() || !Marked && Distance < W2.Range + 75f))
-                    E1.CastOnUnit(Player, PacketCasting);
-            }
-
-                /* Cougar Form */
-            else
-            {
-                if (!Marked && R.IsReady() && Config.Item("combo_R").GetValue<bool>() && Distance < W2.Range + 75f)
+                if (useR && marked && R.IsReady() && distance < 750f ||
+                    (!Q.IsReady() && !Q.IsReady(2500) && target.Distance(_player) < 300f) &&
+                    (!target.UnderTurret(true) || underT))
                 {
-                    R.CastOnUnit(Player, PacketCasting);
+                    R.Cast(PacketCasting);
+                }
+
+                if (useQ && Q.IsReady())
+                {
+                    Q.Cast(target, PacketCasting);
+                }
+
+                if (useW && W.IsReady())
+                {
+                    W.Cast(target, PacketCasting);
+                }
+
+                if (useE && E.IsReady() && Utility.CountEnemiesInRange(_player.AttackRange) > 0)
+                {
+                    E.CastOnUnit(_player, PacketCasting);
+                }
+            }
+            else /* Cougar Form */
+            {
+                if (!marked && useR && R.IsReady() && distance < W.Range + 75f)
+                {
+                    R.Cast(PacketCasting);
                     return;
                 }
 
-                // Deathfire grasp / Blackfire Torch
-                float dmg = Q1.GetDamage(Target, 1) + W1.GetDamage(Target, 1) + E1.GetDamage(Target, 1);
-                if (Target.IsValidTarget(DFG.Range) && Q1.IsReady() && W1.IsReady() && E1.IsReady() &&
-                    dmg < Target.Health &&
-                    (dmg*1.2f) + (Target.MaxHealth*(DFG.Id == 3188 ? 0.20f : 0.15f)) > Target.Health && useItems)
-                    DFG.Cast(Target);
+                if (useQ && Q.IsReady())
+                    Q.CastOnUnit(_player, PacketCasting);
 
-                if (Marked && Hunting && W2.IsReady() && Config.Item("combo_W2").GetValue<bool>() && Distance < 750f &&
-                    Distance > 200f && (!Target.UnderTurret(true) || comboUT))
-                    Player.Spellbook.CastSpell(SpellSlot.W, Target);
-                else if (E2.IsReady() && Distance < 300f)
+                if (useW && marked && hunting && W.IsReady() && distance < 750f && distance > 200f &&
+                    (!target.UnderTurret(true) || underT))
                 {
-                    PredictionOutput Pred = Prediction.GetPrediction(Target, 0.5f);
-                    E2.Cast(Pred.CastPosition, PacketCasting);
+                    W.CastOnUnit(target, PacketCasting);
+                }
+
+                if (useE && E.IsReady() && distance < E.Range)
+                {
+                    var pred = Prediction.GetPrediction(target, 0.5f);
+                    E.Cast(pred.CastPosition, PacketCasting);
                 }
             }
         }
 
-        private static void doHarass()
+        private static void Harass()
         {
-            Obj_AI_Hero Target = TargetSelector.GetTarget(Q1.Range, TargetSelector.DamageType.Magical);
-            Obj_AI_Base OrbTarget = LXOrbwalker.GetPossibleTarget();
-            if (!IsCougar && (OrbTarget == null || !OrbTarget.IsMinion))
-            {
-                if (Q1.IsReady() && Config.Item("harass_Q1").GetValue<bool>())
-                    Q1.Cast(Target, PacketCasting);
+            var target = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Magical);
+            var orbTarget = LXOrbwalker.GetPossibleTarget();
 
-                if (W1.IsReady() && Config.Item("harass_W1").GetValue<bool>())
-                    W1.Cast(Target, PacketCasting);
-            }
-        }
+            var useQ = _config.Item("harass_Q1").GetValue<bool>();
+            var useW = _config.Item("harass_W1").GetValue<bool>();
+            var useE = _config.Item("harass_E2").GetValue<bool>();
 
-        private static void doFarm()
-        {
-            foreach (
-                Obj_AI_Minion Minion in
-                    ObjectManager.Get<Obj_AI_Minion>()
-                        .Where(
-                            minion =>
-                                minion.Team != Player.Team && !minion.IsDead &&
-                                Vector2.Distance(minion.ServerPosition.To2D(), Player.ServerPosition.To2D()) < 600f)
-                        .OrderBy(minion => Vector2.Distance(minion.Position.To2D(), Player.Position.To2D())))
-            {
-                if (IsCougar)
-                {
-                    if (Q2.IsReady() && Config.Item("farm_Q2").GetValue<bool>())
-                        Q2.CastOnUnit(Player, PacketCasting);
-                    else if (W2.IsReady() && Config.Item("farm_W2").GetValue<bool>() && Player.Distance(Minion) > 200f)
-                        W2.Cast(Minion.Position, PacketCasting);
-                    else if (E2.IsReady() && Config.Item("farm_E2").GetValue<bool>())
-                        E2.Cast(Minion.Position, PacketCasting);
-                }
-                else if (R.IsReady() && Config.Item("farm_R").GetValue<bool>())
-                    R.CastOnUnit(Player, PacketCasting);
-                else if (E1.IsReady() && Config.Item("farm_E1").GetValue<bool>())
-                    E1.CastOnUnit(Player, PacketCasting);
+            var minMn = _config.Item("harass_Mn").GetValue<Slider>().Value;
+
+            if ((orbTarget != null && orbTarget.IsMinion)) 
                 return;
+
+            if (IsCougar)
+            {
+                if (useE && E.IsReady())
+                {
+                    E.Cast(target);
+                }
+
+                return;
+            }
+
+            if (_player.ManaPercentage() < minMn)
+                return;
+
+            if (useQ && Q.IsReady())
+            {
+                Q.Cast(target, PacketCasting);
+            }
+
+            if (useW && W.IsReady())
+            {
+                W.Cast(target, PacketCasting);
+            }
+        }
+
+        private static void Farm()
+        {
+            var minions = MinionManager.GetMinions(_player.Position, 750f, MinionTypes.All, MinionTeam.NotAlly).OrderByDescending(m => m.HasBuff("nidaleepassivehunted") ? float.MaxValue : m.MaxHealth );
+            var target = minions.FirstOrDefault(m => m.IsValidTarget());
+
+            if (target == null)
+                return;
+            
+            var marked = target.HasBuff("nidaleepassivehunted", true);
+
+            var useQ = _config.Item("farm_Q" + (IsCougar ? "2" : "1")).GetValue<bool>();
+            var useE = _config.Item("farm_E" + (IsCougar ? "2" : "1")).GetValue<bool>();
+            var useW = _config.Item("farm_W2").GetValue<bool>();
+            var useR = _config.Item("farm_R").GetValue<bool>();
+
+
+            if (!IsCougar)
+            {
+                if (useQ && Q.IsReady() && !target.IsMinion)
+                {
+                    Q.Cast(target, PacketCasting);
+                }
+
+                if (useE && E.IsReady())
+                {
+                    E.CastOnUnit(_player, PacketCasting);
+                }
+
+                if (useR && R.IsReady() && (marked || Q.Instance.Cooldown > 6f - (6f * _player.PercentCooldownMod)))
+                {
+                    R.Cast(PacketCasting);
+                }
+            }
+            else
+            {
+                if (useQ && Q.IsReady())
+                {
+                    Q.Cast(PacketCasting);
+                }
+
+                if (useW && W.IsReady() && _player.Distance(target) > 200f)
+                {
+                    if (!marked && _player.Distance(target) < 300f)
+                    {
+                        W.Cast(target, PacketCasting);
+                    }
+                    else
+                    {
+                        W.CastOnUnit(target, PacketCasting);
+                    }
+                }
+
+                if (useE && E.IsReady())
+                {
+                    E.Cast(target, PacketCasting);
+                }
             }
         }
 
         private static void KillSteal()
         {
-            var ks_Q1 = Config.Item("ks_Q1").GetValue<bool>();
-            var ks_dot = Config.Item("ks_dot").GetValue<bool>();
+            if (LXOrbwalker.CurrentMode == LXOrbwalker.Mode.Combo)
+                return;
 
+            var ksQ = _config.Item("ks_Q1").GetValue<bool>();
+            var ksDot = _config.Item("ks_dot").GetValue<bool>();
 
-            if (ks_Q1 && !IsCougar)
+            if (ksQ)
             {
-                Obj_AI_Hero Q1Enemy =
+                var qTarget =
                     ObjectManager.Get<Obj_AI_Hero>()
-                        .FirstOrDefault(hero => hero.IsValidTarget(Q1.Range) && hero.Health < Q1.GetDamage(hero));
+                        .FirstOrDefault(hero => hero.IsValidTarget(1500f) && hero.Health < Q.GetDamage(hero));
 
-                if (Q1Enemy != null && Q1.IsReady() && Q1Enemy.IsValid)
-                    Q1.Cast(Q1Enemy, PacketCasting);
+                if (qTarget != null && Q.IsReady() && qTarget.IsValid)
+                {
+                    Q.Cast(qTarget, PacketCasting);
+                }
             }
 
-            if (ks_dot && Ignite != SpellSlot.Unknown)
+            if (ksDot && _igniteSlot != SpellSlot.Unknown)
             {
-                Obj_AI_Hero dotEnemy =
+                var dotEnemy =
                     ObjectManager.Get<Obj_AI_Hero>()
                         .FirstOrDefault(
                             hero =>
                                 hero.IsValidTarget(600f) &&
-                                hero.Health < Player.GetSummonerSpellDamage(hero, Damage.SummonerSpell.Ignite) &&
+                                hero.Health < _player.GetSummonerSpellDamage(hero, Damage.SummonerSpell.Ignite) &&
                                 !hero.HasBuff("SummonerDot", true));
-                if (dotEnemy != null && Player.Spellbook.GetSpell(Ignite).State == SpellState.Ready && dotEnemy.IsValid)
+                if (dotEnemy != null && _player.Spellbook.GetSpell(_igniteSlot).State == SpellState.Ready && dotEnemy.IsValid)
                 {
-                    Player.Spellbook.CastSpell(Ignite, dotEnemy);
+                    _player.Spellbook.CastSpell(_igniteSlot, dotEnemy);
                 }
             }
         }
 
         private static void AutoHeal(bool healAllies)
         {
-            if (Player.HasBuff("Recall"))
+            if (_player.HasBuff("Recall"))
                 return;
 
-            Obj_AI_Hero Target = healAllies
+            var target = healAllies
                 ? ObjectManager.Get<Obj_AI_Hero>()
                     .OrderBy(hero => hero.Health)
-                    .First(hero => hero.IsAlly && hero.IsValidTarget(E1.Range, false))
-                : Target = Player;
+                    .First(hero => hero.IsAlly && hero.IsValidTarget(E.Range, false))
+                : _player;
 
-            if (E1.IsReady() &&
-                Target.Health/Target.MaxHealth < Config.Item("autoHealPct").GetValue<Slider>().Value/100f)
-                E1.CastOnUnit(Target, PacketCasting);
+            var minHp = _config.Item("autoHealPct").GetValue<Slider>().Value;
+
+            if (E.IsReady() && _player.HealthPercentage() <= minHp)
+                E.CastOnUnit(target, PacketCasting);
         }
     }
 }
