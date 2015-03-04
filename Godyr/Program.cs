@@ -12,7 +12,11 @@ namespace Godyr
 {
     internal class Program
     {
-        private static readonly Obj_AI_Hero Player = ObjectManager.Player;
+        private static Obj_AI_Hero Player
+        {
+            get { return ObjectManager.Player; }
+        }
+        
         private static Menu Config;
         private static Spell Q, W, E, R;
 
@@ -94,7 +98,7 @@ namespace Godyr
                 Game.PrintChat(
                     "<font color=\"#0066FF\">[<font color=\"#FFFFFF\">madk</font>]</font><font color=\"#FFFFFF\"> Udyr assembly loaded! :^)</font>");
 
-                Game.OnGameUpdate += Game_OnGameUpdate;
+                Game.OnUpdate += Game_OnGameUpdate;
                 Obj_AI_Base.OnProcessSpellCast += Obj_AI_Hero_OnProcessSpellCast;
             };
         }

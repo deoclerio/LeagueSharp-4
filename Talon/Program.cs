@@ -103,7 +103,7 @@ namespace Talon
             TMT = new Items.Item(3077, 400f);
             HYD = new Items.Item(3074, 400f);
 
-            Game.OnGameUpdate += OnGameUpdate;
+            Game.OnUpdate += OnGameUpdate;
             Drawing.OnDraw += OnDraw;
             LXOrbwalker.AfterAttack += AfterAttack;
         }

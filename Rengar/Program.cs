@@ -15,7 +15,7 @@ namespace Rengar
     internal class Program
     {
         private static Obj_AI_Hero Player;
-        private static Items.Item YGB, TMT, HYD, BCL, BRK, DFG;
+        private static Items.Item YGB, TMT, HYD, BCL, BRK;
         private static Spell Q, W, E, R;
         private static Menu Config;
 
@@ -155,7 +155,6 @@ namespace Rengar
                     HYD = new Items.Item(3074, 400f); // Hydra
                     BCL = new Items.Item(3144, 450f); // Cutlass
                     BRK = new Items.Item(3153, 450f); // Blade of the Ruined King
-                    DFG = new Items.Item(DFGId, 750f); // Deathfire Grasp
 
                     #endregion
 
@@ -173,7 +172,7 @@ namespace Rengar
                     Game.PrintChat(
                         "<font color=\"#0066FF\">[<font color=\"#FFFFFF\">madk</font>]</font><font color=\"#FFFFFF\"> Rengar assembly loaded! :^)</font>");
 
-                    Game.OnGameUpdate += OnGameUpdate;
+                    Game.OnUpdate += OnGameUpdate;
                     Obj_AI_Base.OnProcessSpellCast += OnProcessSpell;
                     LXOrbwalker.BeforeAttack += BeforeAttack;
                     LXOrbwalker.AfterAttack += AfterAttack;
@@ -377,10 +376,6 @@ namespace Rengar
                 // BORK
                 if (BRK.IsReady() && Target.IsValidTarget(BRK.Range))
                     BRK.Cast(Target);
-
-                // DFG
-                if (W.IsReady() && DFG.IsReady() && Target.IsValidTarget(DFG.Range))
-                    DFG.Cast(Target);
 
                 // Ferocity Spell
                 if (Player.Mana == 5)
