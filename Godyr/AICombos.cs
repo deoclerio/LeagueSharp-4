@@ -9,11 +9,12 @@ namespace Godyr
 {
     internal static class AICombos
     {
-        public static Obj_AI_Base Target;
-
         public static void Combo()
         {
-            if (Target == null)
+
+            var target = Config.Orbwalker.GetTarget() as Obj_AI_Base;
+
+            if (target == null)
             {
                 return;
             }
@@ -33,7 +34,7 @@ namespace Godyr
                     break;
 
                 case Udyr.Stances.Bear:
-                    if (!Target.HasBuff("udyrbearstuncheck", true))
+                    if (!target.HasBuff("udyrbearstuncheck", true))
                     {
                         break;
                     }
@@ -46,7 +47,7 @@ namespace Godyr
 
                 case Udyr.Stances.Phoenix:
 
-                    if (!Target.HasBuff("udyrbearstuncheck", true) && Udyr.E.Cast()) {}
+                    if (!target.HasBuff("udyrbearstuncheck", true) && Udyr.E.Cast()) {}
                     if (Config.CanUseShield() && Udyr.W.Cast()) {}
 
                     break;
